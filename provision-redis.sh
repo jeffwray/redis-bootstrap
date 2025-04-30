@@ -12,35 +12,48 @@ DATA_DIR="/var/lib/redis"
 PASS_FILE="$CONFIG_DIR/.redis-pass"
 BOOT_ENV="$CONFIG_DIR/boot-env"
 
+# === Check if Redis is already installed with correct version ===
+if command -v redis-server &>/dev/null; then
+  INSTALLED_VERSION=$(redis-server --version | grep -oE 'v=[0-9]+\.[0-9]+\.[0-9]+' | cut -d= -f2)
+  if [ "$INSTALLED_VERSION" = "$REDIS_VERSION" ]; then
+    echo "[✓] Redis $REDIS_VERSION is already installed. Skipping installation."
+    SKIP_REDIS_INSTALL=true
+  else
+    echo "[!] Redis $INSTALLED_VERSION is installed, but we need $REDIS_VERSION. Will reinstall."
+  fi
+fi
+
 # === Create redis user/data/config dirs ===
 echo "[+] Creating Redis directories..."
 sudo mkdir -p $DATA_DIR $CONFIG_DIR
 sudo chown $REDIS_USER:$REDIS_USER $DATA_DIR
 sudo chmod 700 $DATA_DIR
 
-# === Install dependencies ===
-echo "[+] Installing dependencies..."
-if command -v yum &>/dev/null; then
-  sudo dnf swap curl-minimal curl --allowerasing -y || true
-  sudo yum groupinstall -y "Development Tools"
-  sudo yum install -y jemalloc-devel tcl curl tar wget openssl-devel
-elif command -v apt &>/dev/null; then
-  sudo apt update
-  sudo apt install -y build-essential libjemalloc-dev tcl curl tar wget libssl-dev
-else
-  echo "[!] Unsupported OS. Exiting."
-  exit 1
-fi
+if [ "$SKIP_REDIS_INSTALL" != "true" ]; then
+  # === Install dependencies ===
+  echo "[+] Installing dependencies..."
+  if command -v yum &>/dev/null; then
+    sudo dnf swap curl-minimal curl --allowerasing -y || true
+    sudo yum groupinstall -y "Development Tools"
+    sudo yum install -y jemalloc-devel tcl curl tar wget openssl-devel
+  elif command -v apt &>/dev/null; then
+    sudo apt update
+    sudo apt install -y build-essential libjemalloc-dev tcl curl tar wget libssl-dev
+  else
+    echo "[!] Unsupported OS. Exiting."
+    exit 1
+  fi
 
-# === Download and build Redis ===
-echo "[+] Downloading Redis $REDIS_VERSION..."
-curl -sO http://download.redis.io/releases/redis-$REDIS_VERSION.tar.gz
-tar xzf redis-$REDIS_VERSION.tar.gz
-cd redis-$REDIS_VERSION
-make distclean || true
-make BUILD_TLS=yes
-sudo make install
-cd ..
+  # === Download and build Redis ===
+  echo "[+] Downloading Redis $REDIS_VERSION..."
+  curl -sO http://download.redis.io/releases/redis-$REDIS_VERSION.tar.gz
+  tar xzf redis-$REDIS_VERSION.tar.gz
+  cd redis-$REDIS_VERSION
+  make distclean || true
+  make BUILD_TLS=yes
+  sudo make install
+  cd ..
+fi
 
 # === Install redis-autoconfig ===
 echo "[+] Installing redis-autoconfig service and script..."
