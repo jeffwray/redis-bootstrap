@@ -1,0 +1,16 @@
+#!/bin/bash
+set -e
+
+# redis-show-pass
+# Displays the stored Redis password from /etc/redis/.redis-pass
+
+PASS_FILE="/etc/redis/.redis-pass"
+
+if [ -f "$PASS_FILE" ]; then
+  echo "[🔐] Redis password:"
+  sudo cat "$PASS_FILE"
+else
+  echo "[!] Password file not found at $PASS_FILE"
+  exit 1
+fi
+

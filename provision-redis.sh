@@ -1,0 +1,69 @@
+#!/bin/bash
+set -e
+
+# Redis Provisioning Script
+# Installs Redis 7.2.4, sets up secure config, systemd services, and dynamic memory tuning.
+
+REDIS_VERSION="7.2.4"
+REDIS_USER="ec2-user"
+INSTALL_DIR="/usr/local/bin"
+CONFIG_DIR="/etc/redis"
+DATA_DIR="/var/lib/redis"
+PASS_FILE="$CONFIG_DIR/.redis-pass"
+BOOT_ENV="$CONFIG_DIR/boot-env"
+
+# === Create redis user/data/config dirs ===
+echo "[+] Creating Redis directories..."
+sudo mkdir -p $DATA_DIR $CONFIG_DIR
+sudo chown $REDIS_USER:$REDIS_USER $DATA_DIR
+sudo chmod 700 $DATA_DIR
+
+# === Install dependencies ===
+echo "[+] Installing dependencies..."
+if command -v yum &>/dev/null; then
+  sudo dnf swap curl-minimal curl --allowerasing -y || true
+  sudo yum groupinstall -y "Development Tools"
+  sudo yum install -y jemalloc-devel tcl curl tar wget openssl-devel
+elif command -v apt &>/dev/null; then
+  sudo apt update
+  sudo apt install -y build-essential libjemalloc-dev tcl curl tar wget libssl-dev
+else
+  echo "[!] Unsupported OS. Exiting."
+  exit 1
+fi
+
+# === Download and build Redis ===
+echo "[+] Downloading Redis $REDIS_VERSION..."
+curl -sO http://download.redis.io/releases/redis-$REDIS_VERSION.tar.gz
+tar xzf redis-$REDIS_VERSION.tar.gz
+cd redis-$REDIS_VERSION
+make distclean || true
+make BUILD_TLS=yes
+sudo make install
+cd ..
+
+# === Install redis-autoconfig ===
+echo "[+] Installing redis-autoconfig service and script..."
+sudo cp redis-autoconfig.sh /usr/local/bin/redis-autoconfig.sh
+sudo chmod +x /usr/local/bin/redis-autoconfig.sh
+sudo cp systemd/redis-autoconfig.service /etc/systemd/system/redis-autoconfig.service
+
+# === Install redis-show-pass ===
+echo "[+] Installing redis-show-pass helper..."
+sudo cp redis-show-pass /usr/local/bin/redis-show-pass
+sudo chmod +x /usr/local/bin/redis-show-pass
+
+# === Install redis.service ===
+echo "[+] Installing redis systemd service..."
+sudo cp systemd/redis.service /etc/systemd/system/redis.service
+
+# === Enable and start services ===
+sudo systemctl daemon-reexec
+sudo systemctl enable redis redis-autoconfig
+sudo systemctl start redis redis-autoconfig
+
+# === Finish ===
+echo "[✓] Redis $REDIS_VERSION installed and configured."
+echo "[🔐] Password stored in: $PASS_FILE"
+echo "[⚙️] Memory auto-tuning enabled at boot."
+

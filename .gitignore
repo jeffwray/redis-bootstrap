@@ -1,0 +1,16 @@
+# Redis source tarball
+redis-*.tar.gz
+
+# Build artifacts
+redis-*/
+
+# Logs
+*.log
+
+# Temp
+*.swp
+*.bak
+*.tmp
+
+# System-specific
+.DS_Store
