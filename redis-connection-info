@@ -1,0 +1,31 @@
+#!/bin/bash
+set -e
+
+# redis-connection-info
+# Displays Redis connection information for remote access
+
+PASS_FILE="/etc/redis/.redis-pass"
+PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "Not available")
+PRIVATE_IP=$(hostname -I | awk '{print $1}')
+
+echo "[ℹ️] Redis Connection Information"
+echo "==============================="
+echo "Port: 6379"
+
+if [ -f "$PASS_FILE" ]; then
+  echo -n "Password: "
+  sudo cat "$PASS_FILE"
+else
+  echo "[!] Password file not found at $PASS_FILE"
+fi
+
+echo -e "\n[🔌] Connection URLs"
+echo "Public IP: redis://:PASSWORD@$PUBLIC_IP:6379"
+echo "Private IP: redis://:PASSWORD@$PRIVATE_IP:6379"
+
+echo -e "\n[📝] Example commands:"
+echo "redis-cli -h $PRIVATE_IP -p 6379 -a \$(redis-show-pass)"
+echo "redis-cli -h $PUBLIC_IP -p 6379 -a \$(redis-show-pass)"
+
+echo -e "\n[⚠️] Security note: Make sure your security groups or firewalls"
+echo "allow inbound traffic on port 6379 from trusted sources only." 

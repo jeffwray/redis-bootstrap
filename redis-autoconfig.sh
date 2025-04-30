@@ -33,7 +33,7 @@ PRIVATE_IP=$(hostname -I | awk '{print $1}')
 
 # Generate redis.conf
 cat <<EOF > "$CONF_FILE"
-bind 127.0.0.1 $PRIVATE_IP
+bind 0.0.0.0
 protected-mode yes
 port 6379
 requirepass $REDIS_PASSWORD
