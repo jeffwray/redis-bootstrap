@@ -57,6 +57,40 @@ Each time the instance boots, Redis will:
 redis-show-pass
 ```
 
+### 4. Creating an EC2 Launch Template
+
+For consistently deploying Redis instances:
+
+1. Open the EC2 console and navigate to "Launch Templates"
+2. Click "Create launch template"
+3. Fill in the basic details:
+   - Name: `redis-server-template`
+   - Description: `Redis server with auto-configuration`
+4. Choose Amazon Linux 2023 or Ubuntu 22.04 AMI
+5. Select your desired instance type (t3.micro, r6g.large, etc.)
+6. Configure your key pair and network settings
+7. Expand the "Advanced details" section
+8. In the "User data" field, paste the following:
+
+```bash
+#!/bin/bash
+# Optional: Set password explicitly
+# echo "REDIS_PASSWORD=your-strong-password" > /etc/redis/boot-env
+cd /tmp
+git clone https://github.com/jeffwray/redis-bootstrap.git
+cd redis-bootstrap
+chmod +x provision-redis.sh
+./provision-redis.sh
+```
+
+9. Add any tags or resource groups as needed
+10. Click "Create launch template"
+
+To launch instances using this template:
+- Go to "Launch Templates" in the EC2 console
+- Select your template and click "Actions" > "Launch instance from template"
+- Review settings and click "Launch instance"
+
 ---
 
 ## 🧠 Notes
